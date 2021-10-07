@@ -1,0 +1,29 @@
+#!/bin/bash
+
+name=$1
+new_image=$2
+
+if [[ -z ${name} ]]; then echo "Name not set"; exit 1; fi
+if [[ ! -f ~/machines/${name}.txt ]]; then echo "VM config not found"; exit 1; fi
+if [[ ! -z ${new_image} ]]; then
+	echo "installed_image=${new_image}" > ~/machines/${name}.txt
+fi
+
+vm_disk=$(virsh domblklist $name | grep -E "vda" | awk '{print $2}')
+source ~/machines/${name}.txt
+virsh destroy ${name}
+
+if [[ -z ${vm_disk} ]]; then echo "VM disk not found"; exit 1; fi
+if [[ -z ${installed_image} ]]; then echo "Installed image not set"; exit 1; fi
+
+echo "Apply image ${installed_image} to ${vm_disk}"
+imagesize=$(pigz -l ${installed_image} |tail -1 | awk '{print $2}')
+#sudo bash -c "pigz -d -c ${installed_image} |pv| dd bs=128K of=${vm_disk} status=none"
+sudo bash -c "pigz -d -c ${installed_image} | pv -C -s ${imagesize} > ${vm_disk}"
+
+if [[ $? -eq 0 ]]; then
+	echo "install successful, starting vm ${name}"
+	virsh start ${name}
+else
+	echo "error"
+fi

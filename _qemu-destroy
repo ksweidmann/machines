@@ -1,0 +1,14 @@
+#!/bin/bash
+
+name=$1
+
+virsh dominfo ${name} >/dev/null 2>&1
+if [[ $? == 1 ]]; then echo "VM ${name} not exists"; exit 1; fi
+
+
+virsh destroy $1
+for i in $(virsh domblklist $name | grep -E "vd[a-z]+" | awk '{print $2}'); do
+	lvremove $i
+done
+virsh undefine $1
+
