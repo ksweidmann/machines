@@ -18,7 +18,6 @@ if [[ -z ${installed_image} ]]; then echo "Installed image not set"; exit 1; fi
 
 echo "Apply image ${installed_image} to ${vm_disk}"
 imagesize=$(pigz -l ${installed_image} |tail -1 | awk '{print $2}')
-#sudo bash -c "pigz -d -c ${installed_image} |pv| dd bs=128K of=${vm_disk} status=none"
 sudo bash -c "pigz -d -c ${installed_image} | pv -C -s ${imagesize} > ${vm_disk}"
 
 if [[ $? -eq 0 ]]; then

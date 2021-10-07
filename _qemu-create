@@ -10,26 +10,22 @@ function ctrl_c()
 	exit 1
 }
 
-
 if [[ -z ${name} ]]; then echo "VM name not set" ; exit 1; fi
 if [[ -z ${source_path} ]]; then echo "Source image not set" ; exit 1; fi
 if [[ -z ${volume_group} ]]; then echo "lvm group not set" ; exit 1; fi
 if [[ -L "/dev/${volume_group}/${name}.fs" ]]; then echo "Volume exists /dev/${volume_group}/${name}.fs"; exit 1; fi
 if [[ ! -f ${source_path} ]]; then echo "Source image not exists ${source_path}"; exit 1; fi
 
-echo "installed_image=${source_path}" > ~/machines/${name}.txt
-
 virsh dominfo ${name} >/dev/null 2>&1
 if [[ $? == 0 ]]; then echo "VM ${name} already exists"; exit 1; fi
 
-sudo lvcreate -q --yes -n ${name}.fs -L10G ${volume_group}
+sudo lvcreate -q --yes -W y -n ${name}.fs -L10G ${volume_group}
 
 
 echo "Apply image ${source_path} to /dev/${volume_group}/${name}.fs"
 imagesize=$(pigz -l ${source_path} |tail -1 | awk '{print $2}')
 sudo bash -c "pigz -d -c ${source_path} | pv -C -s ${imagesize} > /dev/${volume_group}/${name}.fs"
 
-#sudo bash -c "pigz -d -c ${source_path} | dd bs=1M of=/dev/${volume_group}/${name}.fs"
 virt-install -n ${name} \
 	--memory 1024 \
 	--vcpus $(nproc) \
@@ -48,5 +44,27 @@ virt-install -n ${name} \
 	--accelerate \
 	--iothreads 4 \
 	--os-variant none \
-    --channel target_type=virtio,name=org.qemu.guest_agent.0
+	--channel target_type=virtio,name=org.qemu.guest_agent.0
 
+counter=0
+while true; do
+	if [[ ${counter} -eq 10 ]]; then
+		echo "Wait timeout"
+		exit 1
+	fi
+	virsh qemu-agent-command ${name} '{"execute":"guest-ping"}' >/dev/null 2>&1
+	if [[ $? -eq 0 ]]; then
+		break
+	fi
+	counter=$((counter+1))
+	sleep 5s
+done
+
+mac=$(virsh qemu-agent-command ${name} '{"execute":"guest-network-get-interfaces"}' | jq '.return[1]."hardware-address"')
+ip=$(virsh qemu-agent-command ${name} '{"execute":"guest-network-get-interfaces"}' | jq '.return[1]."ip-addresses"[0]."ip-address"')
+
+echo "Machine is online with ip ${ip} and mac ${mac}"
+
+echo "installed_image=${source_path}" > ~/machines/${name}.txt
+echo "ip=${ip}" >> ~/machines/${name}.txt
+echo "mac=${mac}" >> ~/machines/${name}.txt
