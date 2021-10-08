@@ -1,31 +1,14 @@
 #!/bin/bash
-
-name=$1
-source_path=$2
-volume_group="vg00"
 trap ctrl_c INT
-
-function ctrl_c()
-{
-	exit 1
-}
-
-if [[ -z ${name} ]]; then echo "VM name not set" ; exit 1; fi
-if [[ -z ${source_path} ]]; then echo "Source image not set" ; exit 1; fi
-if [[ -z ${volume_group} ]]; then echo "lvm group not set" ; exit 1; fi
-if [[ -L "/dev/${volume_group}/${name}.fs" ]]; then echo "Volume exists /dev/${volume_group}/${name}.fs"; exit 1; fi
-if [[ ! -f ${source_path} ]]; then echo "Source image not exists ${source_path}"; exit 1; fi
-
-virsh dominfo ${name} >/dev/null 2>&1
-if [[ $? == 0 ]]; then echo "VM ${name} already exists"; exit 1; fi
+base_directory="${HOME}/projects/machines/"
+ssh_key=$(cat ${base_directory}/id_rsa.pub)
+volume_group="vg00"
+. ${base_directory}/lib
+create_check_input $1 $2 
 
 sudo lvcreate -q --yes -W y -n ${name}.fs -L10G ${volume_group}
-
-
-echo "Apply image ${source_path} to /dev/${volume_group}/${name}.fs"
-imagesize=$(pigz -l ${source_path} |tail -1 | awk '{print $2}')
-sudo bash -c "pigz -d -c ${source_path} | pv -C -s ${imagesize} > /dev/${volume_group}/${name}.fs"
-
+apply_image "${source_path}" "/dev/${volume_group}/${name}.fs"
+sudo virt-customize --hostname ${name} -a "/dev/${volume_group}/${name}.fs"
 virt-install -n ${name} \
 	--memory 1024 \
 	--vcpus $(nproc) \
@@ -44,27 +27,8 @@ virt-install -n ${name} \
 	--accelerate \
 	--iothreads 4 \
 	--os-variant none \
-	--channel target_type=virtio,name=org.qemu.guest_agent.0
+	--channel unix,mode=bind,path=/var/lib/libvirt/qemu/${name}.agent,target_type=virtio,name=org.qemu.guest_agent.0
 
-counter=0
-while true; do
-	if [[ ${counter} -eq 10 ]]; then
-		echo "Wait timeout"
-		exit 1
-	fi
-	virsh qemu-agent-command ${name} '{"execute":"guest-ping"}' >/dev/null 2>&1
-	if [[ $? -eq 0 ]]; then
-		break
-	fi
-	counter=$((counter+1))
-	sleep 5s
-done
-
-mac=$(virsh qemu-agent-command ${name} '{"execute":"guest-network-get-interfaces"}' | jq '.return[1]."hardware-address"')
-ip=$(virsh qemu-agent-command ${name} '{"execute":"guest-network-get-interfaces"}' | jq '.return[1]."ip-addresses"[0]."ip-address"')
-
-echo "Machine is online with ip ${ip} and mac ${mac}"
-
-echo "installed_image=${source_path}" > ~/machines/${name}.txt
-echo "ip=${ip}" >> ~/machines/${name}.txt
-echo "mac=${mac}" >> ~/machines/${name}.txt
+wait_online "${name}"
+write_ssh_key "${name}" "${ssh_key}"
+write_config "${name}"

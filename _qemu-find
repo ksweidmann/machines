@@ -1,0 +1,3 @@
+#!/bin/bash
+
+find /mnt/smb/images/raw/kvm/ -name \*$1\*$2.img.gz -printf "%T@ %p %s\n" | sort -n | awk '{print $2, $3}'

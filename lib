@@ -1,0 +1,85 @@
+#!/bin/bash
+
+function apply_image()
+{
+    echo "Apply image ${1} to ${2}"
+    imagesize=$(pigz -l ${1} |tail -1 | awk '{print $2}')
+    sudo bash -c "pigz -p $(nproc) -d -c ${1} | pv -C -w 80 -s ${imagesize} > ${2}"
+}
+
+function ctrl_c()
+{
+	exit 1
+}
+
+function write_file()
+{
+    b64key="$(echo $2 | base64 -w 0)"
+    virsh qemu-agent-command ${1} "{\"execute\":\"guest-file-open\", \"arguments\":{\"path\":\"${3}\",\"mode\":\"w+\"}}" >/dev/null 2>&1
+    virsh qemu-agent-command ${1} "{\"execute\":\"guest-file-write\", \"arguments\":{\"handle\":1000,\"buf-b64\":\"${b64key}\"}}" >/dev/null 2>&1
+    virsh qemu-agent-command ${1} '{"execute":"guest-file-close", "arguments":{"handle":1000}}' >/dev/null 2>&1
+}
+
+function write_ssh_key()
+{
+    virsh qemu-agent-command ${1} "{\"execute\":\"guest-ssh-add-authorized-keys\",\"arguments\": {\"username\":\"root\", \"keys\":[\"${2}\"]}}" >/dev/null 2>&1
+    if [[ $? -ne 0 ]]; then
+        write_file "${1}" "${2}" "/root/.ssh/authorized_keys"
+    fi
+}
+
+function wait_online()
+{
+    local ip
+    local mac
+    counter=0
+    while true; do
+        if [[ ${counter} -eq 10 ]]; then
+            echo "Wait timeout"
+            exit 1
+        fi
+        virsh qemu-agent-command ${1} '{"execute":"guest-ping"}' >/dev/null 2>&1
+        if [[ $? -eq 0 ]]; then
+            break
+        fi
+        counter=$((counter+1))
+        sleep 5s
+    done
+    ip=$(get_ip ${1})
+    mac=$(get_mac ${1})
+    ssh -q router "/ip dns static remove [/ip dns static find name=${1}]"
+    ssh -q router "/ip dns static add address=${ip} name=${1}"
+    echo "Machine is online with ip ${ip} and mac ${mac}"
+}
+
+function get_mac()
+{
+    virsh qemu-agent-command ${1} '{"execute":"guest-network-get-interfaces"}' | jq '.return[1]."hardware-address"'
+}
+
+function get_ip()
+{
+    virsh qemu-agent-command ${1} '{"execute":"guest-network-get-interfaces"}' | jq '.return[1]."ip-addresses"[0]."ip-address"'
+}
+
+function create_check_input()
+{
+    if [[ -z ${1} ]]; then echo "VM name not set" ; exit 1; fi
+    if [[ -z ${2} ]]; then echo "Source image not set" ; exit 1; fi
+    if [[ -z ${volume_group} ]]; then echo "lvm group not set" ; exit 1; fi
+    if [[ -L "/dev/${volume_group}/${1}.fs" ]]; then echo "Volume exists /dev/${volume_group}/${1}.fs"; exit 1; fi
+    if [[ ! -f ${2} ]]; then echo "Source image not exists ${2}"; exit 1; fi
+    virsh dominfo ${1} >/dev/null 2>&1
+    if [[ $? == 0 ]]; then echo "VM ${1} already exists"; exit 1; fi
+
+    name=$1
+    source_path=$2
+}
+
+function write_config()
+{
+    mkdir -p ${base_directory}/configs
+    echo "installed_image=${source_path}" > ${base_directory}/configs/${1}.txt
+    echo "ip=$(get_ip ${1})" >> ${base_directory}/configs/${1}.txt
+    echo "mac=$(get_mac ${1})" >> ${base_directory}/configs/${1}.txt
+}
