@@ -40,16 +40,17 @@ function wait_online()
         fi
         virsh qemu-agent-command ${1} '{"execute":"guest-ping"}' >/dev/null 2>&1
         if [[ $? -eq 0 ]]; then
+            sleep 5s
+            ip=$(get_ip ${1})
+            mac=$(get_mac ${1})
+            ssh -q router "/ip dns static remove [/ip dns static find name=${1}]"
+            ssh -q router "/ip dns static add address=${ip} name=${1}"
+            echo "Machine is online with ip ${ip} and mac ${mac}"
             break
         fi
         counter=$((counter+1))
         sleep 5s
     done
-    ip=$(get_ip ${1})
-    mac=$(get_mac ${1})
-    ssh -q router "/ip dns static remove [/ip dns static find name=${1}]"
-    ssh -q router "/ip dns static add address=${ip} name=${1}"
-    echo "Machine is online with ip ${ip} and mac ${mac}"
 }
 
 function get_mac()

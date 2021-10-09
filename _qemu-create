@@ -2,7 +2,7 @@
 trap ctrl_c INT
 base_directory="${HOME}/projects/machines/"
 ssh_key=$(cat ${base_directory}/id_rsa.pub)
-volume_group="vg00"
+volume_group="vg01"
 . ${base_directory}/lib
 create_check_input $1 $2 
 
