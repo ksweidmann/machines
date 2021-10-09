@@ -16,7 +16,7 @@ if [[ -z ${vm_disk} ]]; then echo "VM disk not found"; exit 1; fi
 if [[ -z ${installed_image} ]]; then echo "Installed image not set"; exit 1; fi
 
 apply_image "${installed_image}" "${vm_disk}"
-sudo virt-customize --hostname ${name} -a "${vm_disk}"
+sudo virt-customize -q --hostname ${name} -a "${vm_disk}"
 
 if [[ $? -eq 0 ]]; then
 	echo "install successful, starting vm ${name}"

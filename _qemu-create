@@ -8,7 +8,7 @@ create_check_input $1 $2
 
 sudo lvcreate -q --yes -W y -n ${name}.fs -L10G ${volume_group}
 apply_image "${source_path}" "/dev/${volume_group}/${name}.fs"
-sudo virt-customize --hostname ${name} -a "/dev/${volume_group}/${name}.fs"
+sudo virt-customize -q --hostname ${name} -a "/dev/${volume_group}/${name}.fs"
 virt-install -n ${name} \
 	--memory 1024 \
 	--vcpus $(nproc) \
