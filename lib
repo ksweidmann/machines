@@ -67,6 +67,7 @@ function create_check_input()
 {
     if [[ -z ${1} ]]; then echo "VM name not set" ; exit 1; fi
     if [[ -z ${2} ]]; then echo "Source image not set" ; exit 1; fi
+    if [[ -z ${3} ]]; then vm_memory="1024"; else vm_memory="${3}"; fi
     if [[ -z ${volume_group} ]]; then echo "lvm group not set" ; exit 1; fi
     if [[ -L "/dev/${volume_group}/${1}.fs" ]]; then echo "Volume exists /dev/${volume_group}/${1}.fs"; exit 1; fi
     if [[ ! -f ${2} ]]; then echo "Source image not exists ${2}"; exit 1; fi
