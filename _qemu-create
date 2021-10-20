@@ -2,21 +2,66 @@
 trap ctrl_c INT
 base_directory="${HOME}/projects/machines/"
 ssh_key=$(cat ${base_directory}/id_rsa.pub)
+. ${base_directory}/lib
+
+
 volume_group="vg01"
 vm_memory="1024"
-. ${base_directory}/lib
-create_check_input $1 $2 $3
+disk_size="5G"
+vm_cpu_count="1"
 
-sudo lvcreate -q --yes -W y -n ${name}.fs -L10G ${volume_group}
-apply_image "${source_path}" "/dev/${volume_group}/${name}.fs"
-sudo virt-customize -q --hostname ${name} -a "/dev/${volume_group}/${name}.fs"
-virt-install -n ${name} \
+if [[ $# -eq 0 ]]; then
+	help_message_create
+fi
+
+while [[ $# -gt 0 ]]; do
+	key="$1"
+	case $key in
+		-m)
+			vm_memory="$2"
+			shift
+			shift
+			;;
+		-n)
+			vm_name="$2"
+			shift
+			shift
+			;;
+		-s)
+			disk_size="$2"
+			shift
+			shift
+			;;
+		-i)
+			source_image="$2"
+			shift
+			shift
+			;;
+		-c)
+			vm_cpu_count="$2"
+			shift
+			shift
+			;;
+		*)
+			echo "Unknown argument: $key"
+			help_message_create
+			exit 1
+			;;
+	esac
+done
+
+create_check_input "${vm_name}" "${source_image}" 
+
+sudo lvcreate -q --yes -W y -n ${vm_name}.fs -L${disk_size} ${volume_group}
+apply_image "${source_image}" "/dev/${volume_group}/${vm_name}.fs"
+sudo virt-customize -q --hostname ${vm_name} -a "/dev/${volume_group}/${vm_name}.fs"
+virt-install -n ${vm_name} \
 	--memory 1024 \
-	--vcpus $(nproc) \
+	--vcpus ${vm_cpu_count} \
 	--cpu host \
 	--import \
 	--network bridge=br1,model=virtio-net-pci \
-	--disk /dev/${volume_group}/${name}.fs,cache=none,bus=virtio,discard=ignore \
+	--disk /dev/${volume_group}/${vm_name}.fs,cache=none,bus=virtio,discard=ignore \
 	--graphics vnc,listen=0.0.0.0,keymap=en_us \
 	--noautoconsole \
 	-v \
@@ -28,8 +73,8 @@ virt-install -n ${name} \
 	--accelerate \
 	--iothreads 4 \
 	--os-variant none \
-	--channel unix,mode=bind,path=/var/lib/libvirt/qemu/${name}.agent,target_type=virtio,name=org.qemu.guest_agent.0
+	--channel unix,mode=bind,path=/var/lib/libvirt/qemu/${vm_name}.agent,target_type=virtio,name=org.qemu.guest_agent.0
 
-wait_online "${name}"
-write_ssh_key "${name}" "${ssh_key}"
-write_config "${name}"
+wait_online "${vm_name}"
+write_ssh_key "${vm_name}" "${ssh_key}"
+write_config "${vm_name}"

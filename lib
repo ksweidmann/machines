@@ -67,15 +67,11 @@ function create_check_input()
 {
     if [[ -z ${1} ]]; then echo "VM name not set" ; exit 1; fi
     if [[ -z ${2} ]]; then echo "Source image not set" ; exit 1; fi
-    if [[ -z ${3} ]]; then vm_memory="1024"; else vm_memory="${3}"; fi
     if [[ -z ${volume_group} ]]; then echo "lvm group not set" ; exit 1; fi
     if [[ -L "/dev/${volume_group}/${1}.fs" ]]; then echo "Volume exists /dev/${volume_group}/${1}.fs"; exit 1; fi
     if [[ ! -f ${2} ]]; then echo "Source image not exists ${2}"; exit 1; fi
     virsh dominfo ${1} >/dev/null 2>&1
     if [[ $? == 0 ]]; then echo "VM ${1} already exists"; exit 1; fi
-
-    name=$1
-    source_path=$2
 }
 
 function write_config()
@@ -85,3 +81,28 @@ function write_config()
     echo "ip=$(get_ip ${1})" >> ${base_directory}/configs/${1}.txt
     echo "mac=$(get_mac ${1})" >> ${base_directory}/configs/${1}.txt
 }
+
+function help_message_create()
+{
+    echo "Possible arguments:"
+    echo "-m | memory size, default 1024m"
+    echo "-n | name of new vm, required"
+    echo "-s | disk size, default 5g"
+    echo "-i | source gzipped image, required"
+    echo "-c | cpu count, default 1"
+}
+
+function help_message_reinstall()
+{
+    echo "Possible arguments:"
+    echo "-n | name of new vm, required"
+    echo "-i | source gzipped image, required"
+}
+
+function help_message_destroy()
+{
+    echo "Possible arguments:"
+    echo "-n | name of new vm, required"
+}
+
+

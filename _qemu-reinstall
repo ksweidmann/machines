@@ -1,16 +1,39 @@
 #!/bin/bash
 base_directory="${HOME}/projects/machines/"
-name=$1
-new_image=$2
 . ${base_directory}/lib
-if [[ -z ${name} ]]; then echo "Name not set"; exit 1; fi
-if [[ ! -f ~/machines/${name}.txt ]]; then echo "VM config not found"; exit 1; fi
+
+if [[ $# -eq 0 ]]; then
+	help_message_create
+fi
+
+while [[ $# -gt 0 ]]; do
+	key="$1"
+	case $key in
+		-n)
+			vm_name="$2"
+			shift
+			shift
+			;;
+		-i)
+			new_image="$2"
+			shift
+			shift
+			;;
+		*)
+			echo "Unknown argument: $key"
+			exit 1
+			;;
+	esac
+done
+
+if [[ -z ${vm_name} ]]; then echo "Name not set"; exit 1; fi
+if [[ ! -f ~/machines/${vm_name}.txt ]]; then echo "VM config not found"; exit 1; fi
 if [[ ! -z ${new_image} ]]; then
-	echo "installed_image=${new_image}" > ${base_directory}/configs/${name}.txt
+	echo "installed_image=${new_image}" > ${base_directory}/configs/${vm_name}.txt
 fi
 
 vm_disk=$(virsh domblklist $name | grep -E "vda" | awk '{print $2}')
-source ${base_directory}/configs/${name}.txt
+source ${base_directory}/configs/${vm_name}.txt
 
 if [[ -z ${vm_disk} ]]; then echo "VM disk not found"; exit 1; fi
 if [[ -z ${installed_image} ]]; then echo "Installed image not set"; exit 1; fi
@@ -23,6 +46,7 @@ if [[ $? -eq 0 ]]; then
 	virsh reset "${name}" >/dev/null 2>&1 || virt start ${name} >/dev/null 2>&1
 	wait_online "${name}"
 	write_ssh_key "${name}" "${ssh_key}"
+	write_config "${vm_name}"
 else
 	echo "error"
 fi
