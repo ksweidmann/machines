@@ -68,7 +68,7 @@ virt-install -n ${vm_name} \
 	--cpu host \
 	--import \
 	--network bridge=br1,model=virtio-net-pci \
-	--disk /dev/${volume_group}/${vm_name}.fs,cache=none,bus=scsi,discard=unmap,detect_zeroes=unmap \
+	--disk /dev/${volume_group}/${vm_name}.fs,cache=none,bus=virtio,discard=unmap,detect_zeroes=unmap \
 	--graphics vnc,listen=0.0.0.0,keymap=en_us \
 	--noautoconsole \
 	-v \
@@ -80,7 +80,6 @@ virt-install -n ${vm_name} \
 	--accelerate \
 	--iothreads 4 \
 	--os-variant none \
-	--controller type=scsi,model=virtio-scsi  \
 	--channel unix,mode=bind,path=/var/lib/libvirt/qemu/${vm_name}.agent,target_type=virtio,name=org.qemu.guest_agent.0
 
 wait_online "${vm_name}"
