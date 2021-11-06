@@ -1,7 +1,8 @@
 #!/bin/bash
 
 if [[ $# -eq 0 ]]; then
-	help_message_create
+	help_message_destroy
+	exit 1
 fi
 
 while [[ $# -gt 0 ]]; do
@@ -26,7 +27,7 @@ if [[ $? == 1 ]]; then echo "VM ${vm_name} not exists"; exit 1; fi
 virsh destroy ${vm_name}
 for i in $(virsh domblklist $vm_name | grep -E "vd[a-z]+" | awk '{print $2}'); do
 	echo "Deleting volume $i"
-	lvremove -y -q $i
+	sudo lvremove -y -q $i
 done
 virsh undefine ${vm_name}
 

@@ -7,6 +7,7 @@ ssh_key=$(cat ${base_directory}/id_rsa.pub)
 
 if [[ $# -eq 0 ]]; then
 	help_message_reinstall
+	exit 1
 fi
 
 while [[ $# -gt 0 ]]; do

@@ -90,6 +90,7 @@ function help_message_create()
     echo "-s | disk size, default 5g"
     echo "-i | source gzipped image, required"
     echo "-c | cpu count, default 1"
+    echo "-v | volume group, default vg01"
 }
 
 function help_message_reinstall()

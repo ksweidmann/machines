@@ -12,6 +12,7 @@ vm_cpu_count="1"
 
 if [[ $# -eq 0 ]]; then
 	help_message_create
+	exit 1
 fi
 
 while [[ $# -gt 0 ]]; do
@@ -42,6 +43,11 @@ while [[ $# -gt 0 ]]; do
 			shift
 			shift
 			;;
+		-v)
+			volume_group="$2"
+			shift
+			shift
+			;;
 		*)
 			echo "Unknown argument: $key"
 			help_message_create
@@ -52,7 +58,8 @@ done
 
 create_check_input "${vm_name}" "${source_image}" 
 
-sudo lvcreate -q --yes -W y -n ${vm_name}.fs -L${disk_size} ${volume_group}
+sudo lvcreate -q --yes -W y --type thin -V ${disk_size} --name ${vm_name}.fs --thin-pool thin ${volume_group}
+#sudo lvcreate -q --yes -W y -n ${vm_name}.fs -L${disk_size} ${volume_group}
 apply_image "${source_image}" "/dev/${volume_group}/${vm_name}.fs"
 sudo virt-customize -q --hostname ${vm_name} -a "/dev/${volume_group}/${vm_name}.fs"
 virt-install -n ${vm_name} \
@@ -61,7 +68,7 @@ virt-install -n ${vm_name} \
 	--cpu host \
 	--import \
 	--network bridge=br1,model=virtio-net-pci \
-	--disk /dev/${volume_group}/${vm_name}.fs,cache=none,bus=virtio,discard=ignore \
+	--disk /dev/${volume_group}/${vm_name}.fs,cache=none,bus=scsi,discard=unmap,detect_zeroes=unmap \
 	--graphics vnc,listen=0.0.0.0,keymap=en_us \
 	--noautoconsole \
 	-v \
@@ -73,6 +80,7 @@ virt-install -n ${vm_name} \
 	--accelerate \
 	--iothreads 4 \
 	--os-variant none \
+	--controller type=scsi,model=virtio-scsi  \
 	--channel unix,mode=bind,path=/var/lib/libvirt/qemu/${vm_name}.agent,target_type=virtio,name=org.qemu.guest_agent.0
 
 wait_online "${vm_name}"
