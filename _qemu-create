@@ -1,11 +1,11 @@
 #!/bin/bash
 trap ctrl_c INT
-base_directory="${HOME}/projects/machines/"
-ssh_key=$(cat ${base_directory}/id_rsa.pub)
-. ${base_directory}/lib
+SCRIPT=$(readlink -f "$0")
+SCRIPTPATH=$(dirname "$SCRIPT")
+. ${SCRIPTPATH}/lib
 
-
-volume_group="vg01"
+ssh_key=$(cat ${SCRIPTPATH}/id_rsa.pub)
+volume_group="vg00"
 vm_memory="1024"
 disk_size="5G"
 vm_cpu_count="1"
@@ -64,7 +64,7 @@ apply_image "${source_image}" "/dev/${volume_group}/${vm_name}.fs"
 sudo virt-customize -q --hostname ${vm_name} -a "/dev/${volume_group}/${vm_name}.fs"
 virt-install -n ${vm_name} \
 	--memory 1024 \
-	--vcpus ${vm_cpu_count} \
+	--vcpus ${vm_cpu_count},maxvcpus=$(nproc) \
 	--cpu host \
 	--import \
 	--network bridge=br1,model=virtio-net-pci \

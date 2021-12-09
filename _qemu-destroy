@@ -1,5 +1,9 @@
 #!/bin/bash
 
+SCRIPT=$(readlink -f "$0")
+SCRIPTPATH=$(dirname "$SCRIPT")
+. ${SCRIPTPATH}/lib
+
 if [[ $# -eq 0 ]]; then
 	help_message_destroy
 	exit 1
@@ -25,7 +29,7 @@ if [[ $? == 1 ]]; then echo "VM ${vm_name} not exists"; exit 1; fi
 
 
 virsh destroy ${vm_name}
-for i in $(virsh domblklist $vm_name | grep -E "vd[a-z]+" | awk '{print $2}'); do
+for i in $(virsh domblklist ${vm_name} | grep -E "sd[a-z]+" | awk '{print $2}'); do
 	echo "Deleting volume $i"
 	sudo lvremove -y -q $i
 done

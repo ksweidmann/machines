@@ -76,10 +76,10 @@ function create_check_input()
 
 function write_config()
 {
-    mkdir -p ${base_directory}/configs
-    echo "installed_image=\"${source_image}\"" > ${base_directory}/configs/${1}.txt
-    echo "ip=$(get_ip ${1})" >> ${base_directory}/configs/${1}.txt
-    echo "mac=$(get_mac ${1})" >> ${base_directory}/configs/${1}.txt
+    mkdir -p ${SCRIPTPATH}/configs
+    echo "installed_image=\"${source_image}\"" > ${SCRIPTPATH}/configs/${1}.txt
+    echo "ip=$(get_ip ${1})" >> ${SCRIPTPATH}/configs/${1}.txt
+    echo "mac=$(get_mac ${1})" >> ${SCRIPTPATH}/configs/${1}.txt
 }
 
 function help_message_create()
