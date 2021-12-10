@@ -33,13 +33,14 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z ${vm_name} ]]; then echo "Name not set"; exit 1; fi
-if [[ ! -f ${base_directory}/configs/${vm_name}.txt ]]; then echo "VM config not found"; exit 1; fi
+if [[ ! -f ${SCRIPTPATH}/configs/${vm_name}.txt ]]; then echo "VM config not found"; exit 1; fi
 if [[ ! -z ${new_image} ]]; then
-	echo "installed_image=${new_image}" > ${base_directory}/configs/${vm_name}.txt
+	sed -i '/installed_image=.*/d' ${SCRIPTPATH}/configs/${vm_name}.txt
+	echo "installed_image=${new_image}" >> ${SCRIPTPATH}/configs/${vm_name}.txt
 fi
 
 vm_disk=$(virsh domblklist ${vm_name} | grep -E "sda" | awk '{print $2}')
-source ${base_directory}/configs/${vm_name}.txt
+source ${SCRIPTPATH}/configs/${vm_name}.txt
 
 if [[ -z ${vm_disk} ]]; then echo "VM disk not found"; exit 1; fi
 if [[ -z ${installed_image} ]]; then echo "Installed image not set"; exit 1; fi
